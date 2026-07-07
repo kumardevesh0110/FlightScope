@@ -2,7 +2,7 @@ import duckdb
 import pandas as pd
 
 class FlightDatabaseManager:
-    def __init__(self, db_path: str = "../data/Flights_2022_sampled_1.8M.parquet"):
+    def __init__(self, db_path: str = "data/Flights_2022_sampled_1.8M.parquet"):
         """
         Initializes the DuckDB connection to the Parquet file.
         Uses an in-memory view to query the file on disk efficiently.
