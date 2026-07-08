@@ -1,1 +1,92 @@
-/* Style tweaks */
+/* style.css - Custom stylesheet for FlightScope */
+
+body {
+    background-color: #0c0d12 !important;
+    color: #e2e8f0 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Custom styles for Dash Dropdowns in Dark Mode (supports both old and new Dash versions) */
+.dark-dropdown {
+    --dash-background-color: #151722 !important;
+    --dash-text-color: #ffffff !important;
+    --dash-border-color: #242938 !important;
+}
+
+/* Specific React-Select Overrides */
+.dark-dropdown .Select-control,
+.dark-dropdown .virtualized-select {
+    background-color: #151722 !important;
+    border: 1px solid #242938 !important;
+    color: #ffffff !important;
+    border-radius: 6px !important;
+}
+
+.dark-dropdown .Select-value,
+.dark-dropdown .Select-value-label,
+.dark-dropdown .Select-placeholder,
+.dark-dropdown .Select-input,
+.dark-dropdown .Select-input input {
+    color: #ffffff !important;
+    background-color: transparent !important;
+}
+
+/* Dropdown Menu Options */
+.dark-dropdown .Select-menu-outer {
+    background-color: #151722 !important;
+    border: 1px solid #242938 !important;
+    border-radius: 6px !important;
+    z-index: 1000 !important;
+}
+
+.dark-dropdown .Select-option {
+    background-color: #151722 !important;
+    color: #cbd5e1 !important;
+    padding: 8px 12px !important;
+}
+
+.dark-dropdown .Select-option.is-focused {
+    background-color: #242938 !important;
+    color: #ffffff !important;
+    cursor: pointer !important;
+}
+
+.dark-dropdown .Select-option.is-selected {
+    background-color: #3b82f6 !important;
+    color: #ffffff !important;
+}
+
+.dark-dropdown .Select-arrow-zone {
+    color: #94a3b8 !important;
+}
+
+/* Single Value Alignment Fix */
+.dark-dropdown .Select--single > .Select-control .Select-value {
+    line-height: 36px !important;
+    padding-left: 10px !important;
+}
+
+/* General Layout Tweaks */
+.card-header h5 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0c0d12;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+}
