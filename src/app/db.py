@@ -170,14 +170,30 @@ def get_overall_kpis(airport=None, airline=None, season=None):
     finally:
         conn.close()
 
-def get_network_data(airline=None, season=None):
+def get_airport_list():
+    """Returns distinct (faa, name) pairs for airports present in the flights table, for dropdown options."""
+    conn = get_db_connection()
+    try:
+        safe_path = AIRPORTS_CSV_PATH.replace('\\', '/')
+        query = f"""
+            SELECT DISTINCT f.Origin AS faa, MAX(a.name) AS name
+            FROM flights f
+            JOIN read_csv('{safe_path}') a ON f.Origin = a.faa
+            GROUP BY f.Origin
+            ORDER BY f.Origin
+        """
+        return conn.execute(query).df()
+    finally:
+        conn.close()
+
+def get_network_data(airline=None, season=None, airport=None):
     """
     Returns edge list (Origin to Dest counts) and node attributes (Centrality metrics)
-    using NetworkX.
+    using NetworkX. If airport is given, only routes originating from that airport are included.
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airline=airline, season=season)
+        where_clause, params = _build_where_clause(airport=airport, airline=airline, season=season)
         
         # 1. Edge list: flights between Origin and Dest
         query_edges = f"""
@@ -235,6 +251,156 @@ def get_network_data(airline=None, season=None):
         df_nodes = df_nodes.merge(centrality_df, on='faa', how='inner')
         
         return df_edges, df_nodes
+    finally:
+        conn.close()
+
+def get_airline_kpis(airline=None, season=None, month=None):
+    """Returns KPI summary (flights, avg arrival delay, on-time %, cancellation %) for the Airline Dashboard."""
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(airline=airline, season=season, month=month)
+        query = f"""
+            SELECT
+                COUNT(*) AS total_flights,
+                AVG(CAST(ArrDelay AS FLOAT)) AS avg_arr_delay,
+                MEAN(CASE WHEN CAST(ArrDelay AS FLOAT) > 15 THEN 1.0 ELSE 0.0 END) * 100 AS delayed_pct,
+                MEAN(CASE WHEN Cancelled = true THEN 1.0 ELSE 0.0 END) * 100 AS cancellation_pct
+            FROM flights
+            {where_clause}
+        """
+        res = conn.execute(query, params).fetchone()
+        if res and res[0]:
+            delayed_pct = res[2] if res[2] is not None else 0.0
+            return {
+                "total_flights": int(res[0]),
+                "avg_arr_delay": float(res[1]) if res[1] is not None else 0.0,
+                "ontime_pct": round(100 - delayed_pct, 2),
+                "cancellation_pct": float(res[3]) if res[3] is not None else 0.0
+            }
+        return {"total_flights": 0, "avg_arr_delay": 0.0, "ontime_pct": 0.0, "cancellation_pct": 0.0}
+    finally:
+        conn.close()
+
+def get_airline_ranking(season=None, month=None, top_n=15):
+    """Returns the top N airlines by flight volume, for the ranking bar chart."""
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(season=season, month=month)
+        query = f"""
+            SELECT Marketing_Airline_Network AS Airline, COUNT(*) AS Flights
+            FROM flights
+            {where_clause}
+            GROUP BY Marketing_Airline_Network
+            ORDER BY Flights DESC
+            LIMIT {int(top_n)}
+        """
+        return conn.execute(query, params).df()
+    finally:
+        conn.close()
+
+def get_airline_delay_causes(airline=None, season=None, month=None):
+    """Returns total delay-minutes by cause, for the delay-cause pie chart."""
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(airline=airline, season=season, month=month)
+        query = f"""
+            SELECT
+                SUM(CAST(CarrierDelay AS FLOAT)) AS CarrierDelay,
+                SUM(CAST(WeatherDelay AS FLOAT)) AS WeatherDelay,
+                SUM(CAST(NASDelay AS FLOAT)) AS NASDelay,
+                SUM(CAST(SecurityDelay AS FLOAT)) AS SecurityDelay,
+                SUM(CAST(LateAircraftDelay AS FLOAT)) AS LateAircraftDelay
+            FROM flights
+            {where_clause}
+        """
+        res = conn.execute(query, params).fetchone()
+        causes = ["CarrierDelay", "WeatherDelay", "NASDelay", "SecurityDelay", "LateAircraftDelay"]
+        if not res:
+            return {c: 0.0 for c in causes}
+        return {c: (float(res[i]) if res[i] is not None else 0.0) for i, c in enumerate(causes)}
+    finally:
+        conn.close()
+
+def get_airline_volume_delay_scatter(season=None, month=None):
+    """Returns per-airline flight volume vs average arrival delay, for the scatter chart."""
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(season=season, month=month)
+        query = f"""
+            SELECT
+                Marketing_Airline_Network AS Airline,
+                COUNT(*) AS Flights,
+                AVG(CAST(ArrDelay AS FLOAT)) AS AverageDelay
+            FROM flights
+            {where_clause}
+            GROUP BY Marketing_Airline_Network
+        """
+        return conn.execute(query, params).df()
+    finally:
+        conn.close()
+
+def get_airline_monthly_trend(airline=None, season=None):
+    """Returns monthly flight volume and average delay, for the monthly trend line chart."""
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(airline=airline, season=season)
+        query = f"""
+            SELECT Month, COUNT(*) AS Flights, AVG(CAST(ArrDelay AS FLOAT)) AS AvgDelay
+            FROM flights
+            {where_clause}
+            GROUP BY Month
+            ORDER BY Month
+        """
+        return conn.execute(query, params).df()
+    finally:
+        conn.close()
+
+def get_airline_top_airports(airline=None, season=None, month=None, top_n=30):
+    """Returns the top N origin airports by flight count, with coordinates, for the airport map."""
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(airline=airline, season=season, month=month)
+        safe_path = AIRPORTS_CSV_PATH.replace('\\', '/')
+        query = f"""
+            SELECT
+                f.Origin AS faa,
+                MAX(a.name) AS name,
+                MAX(a.lat) AS lat,
+                MAX(a.lon) AS lon,
+                COUNT(*) AS flights
+            FROM flights f
+            JOIN read_csv('{safe_path}') a ON f.Origin = a.faa
+            {where_clause}
+            GROUP BY f.Origin
+            HAVING MAX(a.lat) IS NOT NULL AND MAX(a.lon) IS NOT NULL
+            ORDER BY flights DESC
+            LIMIT {int(top_n)}
+        """
+        return conn.execute(query, params).df()
+    finally:
+        conn.close()
+
+def get_pca_sample(airline=None, season=None, month=None, sample_size=5000):
+    """
+    Returns a random sample of pre-computed PCA-reduced flight records for the
+    High-Dimensional Analytics scatter plot, filtered by the given criteria.
+    """
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(airline=airline, season=season, month=month)
+        base_condition = "PCA_1 IS NOT NULL AND PCA_2 IS NOT NULL"
+        if where_clause:
+            where_clause = where_clause + f" AND {base_condition}"
+        else:
+            where_clause = f" WHERE {base_condition}"
+
+        query = f"""
+            SELECT PCA_1, PCA_2, Origin_Dep_Congestion, Marketing_Airline_Network, ArrDelay
+            FROM flights
+            {where_clause}
+            USING SAMPLE {int(sample_size)}
+        """
+        return conn.execute(query, params).df()
     finally:
         conn.close()
 

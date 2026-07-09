@@ -21,6 +21,7 @@ def build_duckdb_database(parquet_path=None):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_origin ON flights(Origin)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_dest ON flights(Dest)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_carrier ON flights(Operating_Airline)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_marketing_airline ON flights(Marketing_Airline_Network)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_month ON flights(Month)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_date ON flights(FlightDate)")
     
