@@ -1,6 +1,7 @@
 import os
 import duckdb
 import pandas as pd
+import networkx as nx
 from src.pipeline.config import DB_PATH, PROCESSED_DIR
 
 AIRPORTS_CSV_PATH = os.path.join(PROCESSED_DIR, "airports.csv")
@@ -158,5 +159,73 @@ def get_overall_kpis(airport=None, airline=None, season=None):
                 "cancellation_rate": float(res[3]) if res[3] is not None else 0.0
             }
         return {"total_flights": 0, "avg_dep_delay": 0.0, "avg_arr_delay": 0.0, "cancellation_rate": 0.0}
+    finally:
+        conn.close()
+
+def get_network_data(airline=None, season=None):
+    """
+    Returns edge list (Origin to Dest counts) and node attributes (Centrality metrics)
+    using NetworkX.
+    """
+    conn = get_db_connection()
+    try:
+        where_clause, params = _build_where_clause(airline=airline, season=season)
+        
+        # 1. Edge list: flights between Origin and Dest
+        query_edges = f"""
+            SELECT 
+                Origin, 
+                Dest, 
+                CAST(COUNT(*) AS FLOAT) AS weight,
+                AVG(CAST(DepDelay AS FLOAT)) AS avg_delay
+            FROM flights
+            {where_clause}
+            GROUP BY Origin, Dest
+        """
+        df_edges = conn.execute(query_edges, params).df()
+        
+        # 2. Node metadata: airport coordinates and names
+        safe_path = AIRPORTS_CSV_PATH.replace('\\', '/')
+        query_nodes = f"""
+            SELECT DISTINCT faa, name, lat, lon
+            FROM read_csv('{safe_path}')
+        """
+        df_nodes = conn.execute(query_nodes).df()
+        
+        if df_edges.empty:
+            return df_edges, pd.DataFrame(columns=['faa', 'name', 'lat', 'lon', 'degree', 'betweenness', 'pagerank'])
+            
+        # 3. Compute NetworkX centrality metrics
+        G = nx.from_pandas_edgelist(
+            df_edges, 
+            source='Origin', 
+            target='Dest', 
+            edge_attr=['weight', 'avg_delay'], 
+            create_using=nx.DiGraph()
+        )
+        
+        # Centrality calculations
+        degree = nx.degree_centrality(G)
+        # Using weight for betweenness. Note: in networkx, higher weight = higher distance. 
+        # But here weight is flight count. So we might need to invert it or just calculate unweighted.
+        # Unweighted betweenness is often better for aviation networks where any connection is a hop.
+        betweenness = nx.betweenness_centrality(G, weight=None)
+        
+        try:
+            pagerank = nx.pagerank(G, weight='weight')
+        except:
+            pagerank = {n: 0 for n in G.nodes()}
+            
+        centrality_df = pd.DataFrame({
+            'faa': list(G.nodes()),
+            'degree': [degree.get(n, 0) for n in G.nodes()],
+            'betweenness': [betweenness.get(n, 0) for n in G.nodes()],
+            'pagerank': [pagerank.get(n, 0) for n in G.nodes()],
+        })
+        
+        # Merge with airport metadata (only keep nodes that are in the graph)
+        df_nodes = df_nodes.merge(centrality_df, on='faa', how='inner')
+        
+        return df_edges, df_nodes
     finally:
         conn.close()
