@@ -1,0 +1,59 @@
+.header-dropdown,
+.header-dropdown .Select-control,
+.header-dropdown.is-open .Select-control,
+.header-dropdown.is-focused .Select-control {
+    background-color: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: white !important;
+}
+
+.header-dropdown .Select-control:hover {
+    border-bottom: 2px solid white !important;
+}
+
+.header-dropdown .Select-value-label,
+.header-dropdown .has-value.Select--single > .Select-control .Select-value .Select-value-label,
+.header-dropdown .Select-value {
+    color: white !important;
+    font-size: 1.4rem !important;
+    font-weight: bold !important;
+}
+
+.header-dropdown .Select-placeholder,
+.header-dropdown .is-pseudo-focused .Select-placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+    font-size: 1.4rem !important;
+    font-weight: bold !important;
+}
+
+.header-dropdown .Select-input > input {
+    color: white !important;
+}
+
+.header-dropdown .Select-menu-outer {
+    background-color: #1a1d2b !important;
+    color: white !important;
+    border: 1px solid #242938 !important;
+    font-size: 1rem !important;
+    font-weight: normal !important;
+}
+
+.header-dropdown .VirtualizedSelectOption {
+    color: #cbd5e1 !important;
+}
+
+.header-dropdown .VirtualizedSelectFocusedOption {
+    background-color: #3b82f6 !important;
+    color: white !important;
+}
+
+.header-dropdown .Select-arrow {
+    border-color: rgba(255, 255, 255, 0.6) transparent transparent !important;
+}
+
+.header-dropdown .Select-clear-zone {
+    color: rgba(255, 255, 255, 0.6) !important;
+}

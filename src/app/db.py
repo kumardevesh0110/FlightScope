@@ -40,7 +40,7 @@ def get_states():
         conn.close()
 
 def _build_where_clause(airport=None, airline=None, season=None, month=None, date=None,
-                        origin_state=None, dest_state=None):
+                        origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """Helper to construct WHERE clause filters dynamically using positional parameters."""
     conditions = []
     params = []
@@ -48,6 +48,14 @@ def _build_where_clause(airport=None, airline=None, season=None, month=None, dat
     if airport:
         conditions.append("Origin = ?")
         params.append(airport)
+        
+    if origin_airport:
+        conditions.append("Origin = ?")
+        params.append(origin_airport)
+        
+    if dest_airport:
+        conditions.append("Dest = ?")
+        params.append(dest_airport)
         
     if airline:
         conditions.append("Marketing_Airline_Network = ?")
@@ -79,14 +87,19 @@ def _build_where_clause(airport=None, airline=None, season=None, month=None, dat
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     return where_clause, params
 
-def get_airport_delay_summary(airline=None, season=None, metric='DepDelay'):
+def get_airport_delay_summary(airline=None, season=None, metric='DepDelay',
+                              origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """
     Returns a summary of flights grouped by Origin airport.
     Joins with airports.csv to get lat/lon coordinates.
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airline=airline, season=season)
+        where_clause, params = _build_where_clause(
+            airline=airline, season=season,
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
+        )
         
         # Determine the database metric to aggregate
         db_metric = metric
@@ -120,7 +133,8 @@ def get_airport_delay_summary(airline=None, season=None, metric='DepDelay'):
     finally:
         conn.close()
 
-def get_temporal_delay_data(airport=None, airline=None, season=None, metric='DepDelay'):
+def get_temporal_delay_data(airport=None, airline=None, season=None, metric='DepDelay',
+                            origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """
     Returns aggregated metrics for:
     1. DayOfWeek vs DepHour (Hourly grid)
@@ -128,7 +142,11 @@ def get_temporal_delay_data(airport=None, airline=None, season=None, metric='Dep
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airport=airport, airline=airline, season=season)
+        where_clause, params = _build_where_clause(
+            airport=airport, airline=airline, season=season,
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
+        )
         
         db_metric = metric
         if metric not in ['DepDelay', 'ArrDelay', 'TaxiOut', 'TaxiIn', 'Cancelled']:
@@ -210,7 +228,8 @@ def get_airport_list():
     finally:
         conn.close()
 
-def get_network_data(airline=None, season=None, airport=None, origin_state=None, dest_state=None):
+def get_network_data(airline=None, season=None, airport=None, 
+                     origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """
     Returns edge list (Origin to Dest counts) and node attributes (Centrality metrics)
     using NetworkX. If airport is given, only routes originating from that airport are included.
@@ -220,7 +239,8 @@ def get_network_data(airline=None, season=None, airport=None, origin_state=None,
     try:
         where_clause, params = _build_where_clause(
             airport=airport, airline=airline, season=season,
-            origin_state=origin_state, dest_state=dest_state
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
         )
         
         # 1. Edge list: flights between Origin and Dest
@@ -347,11 +367,15 @@ def get_airline_delay_causes(airline=None, season=None, month=None):
     finally:
         conn.close()
 
-def get_airline_volume_delay_scatter(season=None, month=None):
+def get_airline_volume_delay_scatter(season=None, month=None, origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """Returns per-airline flight volume vs average arrival delay, for the scatter chart."""
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(season=season, month=month)
+        where_clause, params = _build_where_clause(
+            season=season, month=month,
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
+        )
         query = f"""
             SELECT
                 Marketing_Airline_Network AS Airline,
@@ -421,7 +445,7 @@ def get_pca_sample(airline=None, season=None, month=None, sample_size=5000):
             where_clause = f" WHERE {base_condition}"
 
         query = f"""
-            SELECT PCA_1, PCA_2, Origin_Dep_Congestion, Marketing_Airline_Network, ArrDelay
+            SELECT PCA_1, PCA_2, Origin_Dep_Congestion, Marketing_Airline_Network, ArrDelay, Distance, AirTime, TaxiOut, TaxiIn
             FROM flights
             {where_clause}
             USING SAMPLE {int(sample_size)}
@@ -430,14 +454,19 @@ def get_pca_sample(airline=None, season=None, month=None, sample_size=5000):
     finally:
         conn.close()
 
-def get_delay_causes(airline=None, season=None, month=None, date=None):
+def get_delay_causes(airline=None, season=None, month=None, date=None,
+                     origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """
     Returns the total minutes for each of the 5 main delay causes,
     grouped by Delay Severity (Minor < 45m, Major >= 45m).
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airline=airline, season=season, month=month, date=date)
+        where_clause, params = _build_where_clause(
+            airline=airline, season=season, month=month, date=date,
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
+        )
         
         query = f"""
             SELECT 

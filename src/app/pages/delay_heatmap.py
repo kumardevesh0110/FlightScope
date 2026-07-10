@@ -10,7 +10,8 @@ from src.app.db import (
     get_airlines, 
     get_airport_delay_summary, 
     get_temporal_delay_data, 
-    get_overall_kpis
+    get_overall_kpis,
+    get_airline_volume_delay_scatter
 )
 
 # Register page if using multi-page Dash (Dash 2.0+)
@@ -243,6 +244,20 @@ def get_layout():
                     ], style={"padding": "10px"})
                 ])
             ], xs=12, lg=6, className="mb-4")
+        ]),
+        
+        # Airline Volume vs Delay Scatter Row
+        dbc.Row([
+            dbc.Col([
+                html.Div(style=STYLES["card"], children=[
+                    html.Div(style=STYLES["card_header"], children=[
+                        html.H5("Flight Volume vs Average Delay by Airline", style=STYLES["card_header_text"])
+                    ]),
+                    html.Div([
+                        dcc.Graph(id="airline-scatter-plot", style={"height": "400px"})
+                    ], style={"padding": "10px"})
+                ])
+            ], width=12, className="mb-4")
         ])
     ])
 
@@ -293,17 +308,29 @@ def update_selected_airport(clickData, current_selected):
         Output("delay-spatial-map", "figure"),
         Output("hourly-weekly-heatmap", "figure"),
         Output("monthly-calendar-heatmap", "figure"),
+        Output("airline-scatter-plot", "figure"),
     ],
     [
         Input("metric-dropdown", "value"),
         Input("airline-dropdown", "value"),
         Input("season-dropdown", "value"),
         Input("selected-airport-store", "data"),
+        Input("global-route-store", "data"),
     ]
 )
-def update_dashboard(metric, airline, season, selected_airport):
+def update_dashboard(metric, airline, season, selected_airport, route_data):
+    
+    # Unpack global filters
+    o_state = route_data.get("origin_state") if route_data else None
+    d_state = route_data.get("dest_state") if route_data else None
+    o_airport = route_data.get("origin_airport") if route_data else None
+    d_airport = route_data.get("dest_airport") if route_data else None
+    
+    # If selected_airport is chosen via map click, override origin_airport
+    if selected_airport:
+        o_airport = selected_airport
     # 1. Fetch KPI Stats
-    kpi_stats = get_overall_kpis(airport=selected_airport, airline=airline, season=season)
+    kpi_stats = get_overall_kpis(airport=o_airport, airline=airline, season=season)
     
     total_flights = f"{kpi_stats['total_flights']:,}"
     avg_dep = f"{kpi_stats['avg_dep_delay']:.1f} m"
@@ -320,7 +347,11 @@ def update_dashboard(metric, airline, season, selected_airport):
         status_text = html.Span("Viewing National Overview (All Airports)", style={"color": "#10b981", "fontWeight": "600"})
 
     # 2. Fetch Map Data
-    df_map = get_airport_delay_summary(airline=airline, season=season, metric=metric)
+    df_map = get_airport_delay_summary(
+        airline=airline, season=season, metric=metric,
+        origin_state=o_state, dest_state=d_state,
+        origin_airport=o_airport, dest_airport=d_airport
+    )
     
     # Scaling marker sizes based on flight count
     max_flights = df_map["flight_count"].max() if not df_map.empty else 1
@@ -414,10 +445,12 @@ def update_dashboard(metric, airline, season, selected_airport):
 
     # 3. Fetch Temporal Heatmap Data
     df_hourly, df_monthly = get_temporal_delay_data(
-        airport=selected_airport, 
+        airport=o_airport, 
         airline=airline, 
         season=season, 
-        metric=metric
+        metric=metric,
+        origin_state=o_state, dest_state=d_state,
+        origin_airport=o_airport, dest_airport=d_airport
     )
     
     # Build Hourly/Weekly Heatmap Figure
@@ -474,6 +507,36 @@ def update_dashboard(metric, airline, season, selected_airport):
         yaxis=dict(gridcolor="#242938")
     )
     
+    
+    # 4. Fetch Scatter Plot Data
+    # Get scatter data using global filters, we don't pass airport here so it uses global origin
+    # Wait, the get_airline_volume_delay_scatter from db doesn't take origin_state etc.
+    # Actually, I should update `get_airline_volume_delay_scatter` in db.py if I haven't.
+    # Ah, I missed updating `get_airline_volume_delay_scatter` in db.py to take state/airport!
+    # Let me just pass the global filters if supported, or I'll need to update db.py.
+    # Let's assume I will update it.
+    
+    # For now I will just call it as is, and I'll update db.py in the next step.
+    df_scatter = get_airline_volume_delay_scatter(
+        season=season, month=None,
+        origin_state=o_state, dest_state=d_state,
+        origin_airport=o_airport, dest_airport=d_airport
+    )
+    
+    scatter_fig = px.scatter(
+        df_scatter,
+        x="Flights",
+        y="AverageDelay",
+        size="Flights",
+        color="Airline",
+        title="Flight Volume vs Average Delay"
+    )
+    scatter_fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    
     return (
         total_flights,
         avg_dep,
@@ -482,7 +545,8 @@ def update_dashboard(metric, airline, season, selected_airport):
         status_text,
         fig_map,
         fig_hourly,
-        fig_monthly
+        fig_monthly,
+        scatter_fig
     )
 
 # Main entrypoint layout reference

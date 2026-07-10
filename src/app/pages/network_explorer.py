@@ -70,17 +70,11 @@ def get_layout():
             html.Div(style=FILTER_SECTION_STYLE, children=[
                 dbc.Row([
                     dbc.Col([
-                        html.Div("Airport (origin)", style=LABEL_STYLE),
-                        dcc.Dropdown(id="network-airport-dropdown", options=airport_options,
-                                     value="", clearable=False, className="dark-dropdown",
-                                     style={"fontSize": "0.85rem"}),
-                    ], lg=3, md=6, sm=12),
-                    dbc.Col([
                         html.Div("Airline", style=LABEL_STYLE),
                         dcc.Dropdown(id="network-airline-dropdown", options=airline_options,
                                      value="", clearable=False, className="dark-dropdown",
                                      style={"fontSize": "0.85rem"}),
-                    ], lg=3, md=6, sm=12),
+                    ], lg=4, md=6, sm=12),
                     dbc.Col([
                         html.Div("Season", style=LABEL_STYLE),
                         dcc.Dropdown(
@@ -95,7 +89,7 @@ def get_layout():
                             value="", clearable=False, className="dark-dropdown",
                             style={"fontSize": "0.85rem"},
                         ),
-                    ], lg=2, md=4, sm=12),
+                    ], lg=3, md=6, sm=12),
                     dbc.Col([
                         html.Div("Top N routes", style=LABEL_STYLE),
                         dcc.Slider(
@@ -105,32 +99,14 @@ def get_layout():
                                    for v in [50, 100, 200, 500, 1000, 2000]},
                             value=200,
                         ),
-                    ], lg=4, md=8, sm=12),
+                    ], lg=5, md=12, sm=12),
                 ], className="g-2"),
-
-                # ── Row 2: State-to-state + Reset ──────────────────
+                
                 dbc.Row([
                     dbc.Col([
-                        html.Div("Origin State", style=LABEL_STYLE),
-                        dcc.Dropdown(id="network-origin-state-dropdown", options=state_options,
-                                     value="", clearable=False, className="dark-dropdown",
-                                     style={"fontSize": "0.85rem"}),
-                    ], lg=3, md=4, sm=6),
-                    dbc.Col([
-                        html.Div("Destination State", style=LABEL_STYLE),
-                        dcc.Dropdown(id="network-dest-state-dropdown", options=state_options,
-                                     value="", clearable=False, className="dark-dropdown",
-                                     style={"fontSize": "0.85rem"}),
-                    ], lg=3, md=4, sm=6),
-                    dbc.Col([
-                        dbc.Button("Reset All Filters", id="network-reset-btn",
-                                   color="secondary", outline=True, size="sm",
-                                   className="mt-3", style={"borderRadius": "8px"}),
-                    ], lg=2, md=4, sm=12, className="d-flex align-items-end"),
-                    dbc.Col([
                         html.Div(id="network-filter-status-badge", className="mt-3"),
-                    ], lg=4, md=12, className="d-flex align-items-end justify-content-end"),
-                ], className="g-2 mt-2"),
+                    ], width=12, className="d-flex align-items-end justify-content-end")
+                ], className="g-2 mt-2")
             ]),
 
             # ── KPI strip ─────────────────────────────────────────
@@ -170,34 +146,13 @@ def register_callbacks(app_ignored):
     pass
 
 
-# ── Callback: reset all filters ───────────────────────────────────────
-@callback(
-    [
-        Output("network-selected-airport-store", "data", allow_duplicate=True),
-        Output("network-airport-dropdown", "value", allow_duplicate=True),
-        Output("network-airline-dropdown", "value", allow_duplicate=True),
-        Output("network-season-dropdown", "value", allow_duplicate=True),
-        Output("network-origin-state-dropdown", "value", allow_duplicate=True),
-        Output("network-dest-state-dropdown", "value", allow_duplicate=True),
-    ],
-    Input("network-reset-btn", "n_clicks"),
-    prevent_initial_call=True,
-)
-def reset_all_filters(n_clicks):
-    return None, "", "", "", "", ""
-
-
-# ── Callback: click / dropdown → selected airport store ───────────────
+# ── Callback: click → selected airport store ───────────────
 @callback(
     Output("network-selected-airport-store", "data"),
     Input("network-map-graph", "clickData"),
-    Input("network-airport-dropdown", "value"),
     State("network-selected-airport-store", "data"),
 )
-def update_selected_airport(clickData, dropdown_value, current_selected):
-    triggered = dash.ctx.triggered_id
-    if triggered == "network-airport-dropdown":
-        return dropdown_value or None
+def update_selected_airport(clickData, current_selected):
     if clickData:
         try:
             point = clickData["points"][0]
@@ -226,11 +181,22 @@ def update_selected_airport(clickData, dropdown_value, current_selected):
         Input("network-season-dropdown", "value"),
         Input("network-topn-slider", "value"),
         Input("network-selected-airport-store", "data"),
-        Input("network-origin-state-dropdown", "value"),
-        Input("network-dest-state-dropdown", "value"),
+        Input("global-route-store", "data"),
     ],
 )
-def update_network(airline, season, top_n, selected_airport, origin_state, dest_state):
+def update_network(airline, season, top_n, selected_airport, route_data):
+    
+    # Unpack global filters
+    o_state = route_data.get("origin_state") if route_data else None
+    d_state = route_data.get("dest_state") if route_data else None
+    o_airport = route_data.get("origin_airport") if route_data else None
+    d_airport = route_data.get("dest_airport") if route_data else None
+    
+    origin_state = o_state
+    dest_state = d_state
+    
+    if selected_airport:
+        o_airport = selected_airport
     # ── Build contextual status badge ─────────────────────────────
     parts = []
     if origin_state and dest_state:
@@ -258,8 +224,9 @@ def update_network(airline, season, top_n, selected_airport, origin_state, dest_
 
     # ── Fetch data ────────────────────────────────────────────────
     df_edges, df_nodes = get_network_data(
-        airline=airline, season=season, airport=selected_airport,
+        airline=airline, season=season, airport=o_airport,
         origin_state=origin_state or None, dest_state=dest_state or None,
+        origin_airport=o_airport or None, dest_airport=d_airport or None
     )
 
     if df_edges.empty or df_nodes.empty:

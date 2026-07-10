@@ -163,10 +163,17 @@ def register_callbacks(app):
         [Input("sankey-airline-filter", "value"),
          Input("sankey-season-filter", "value"),
          Input("sankey-month-filter", "value"),
-         Input("sankey-date-filter", "date")]
+         Input("sankey-date-filter", "date"),
+         Input("global-route-store", "data")]
     )
-    def update_sankey(airline, season, month, date):
+    def update_sankey(airline, season, month, date, route_data):
         al = None if airline == "ALL" else airline
+        
+        # Unpack global filters
+        o_state = route_data.get("origin_state") if route_data else None
+        d_state = route_data.get("dest_state") if route_data else None
+        o_airport = route_data.get("origin_airport") if route_data else None
+        d_airport = route_data.get("dest_airport") if route_data else None
         
         # If a specific date is selected, ignore the Season and Month filters
         if date:
@@ -176,7 +183,11 @@ def register_callbacks(app):
             sn = None if season == "ALL" else season
             mn = None if month == 0 else month
         
-        causes = get_delay_causes(airline=al, season=sn, month=mn, date=date)
+        causes = get_delay_causes(
+            airline=al, season=sn, month=mn, date=date,
+            origin_state=o_state, dest_state=d_state,
+            origin_airport=o_airport, dest_airport=d_airport
+        )
         
         # Calculate totals per severity
         minor = causes.get('Minor', {})
