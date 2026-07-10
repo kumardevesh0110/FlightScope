@@ -24,7 +24,23 @@ def get_airlines():
     finally:
         conn.close()
 
-def _build_where_clause(airport=None, airline=None, season=None, month=None, date=None):
+def get_states():
+    """Returns a sorted list of distinct (state_code, state_name) tuples for state filter dropdowns."""
+    conn = get_db_connection()
+    try:
+        query = """
+            SELECT DISTINCT OriginState AS code, OriginStateName AS name
+            FROM flights
+            WHERE OriginState IS NOT NULL AND OriginStateName IS NOT NULL
+            ORDER BY OriginStateName
+        """
+        df = conn.execute(query).df()
+        return list(zip(df['code'].tolist(), df['name'].tolist()))
+    finally:
+        conn.close()
+
+def _build_where_clause(airport=None, airline=None, season=None, month=None, date=None,
+                        origin_state=None, dest_state=None):
     """Helper to construct WHERE clause filters dynamically using positional parameters."""
     conditions = []
     params = []
@@ -51,6 +67,14 @@ def _build_where_clause(airport=None, airline=None, season=None, month=None, dat
     if date:
         conditions.append("CAST(FlightDate AS STRING) = ?")
         params.append(date)
+
+    if origin_state:
+        conditions.append("OriginState = ?")
+        params.append(origin_state)
+
+    if dest_state:
+        conditions.append("DestState = ?")
+        params.append(dest_state)
             
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     return where_clause, params
@@ -186,14 +210,18 @@ def get_airport_list():
     finally:
         conn.close()
 
-def get_network_data(airline=None, season=None, airport=None):
+def get_network_data(airline=None, season=None, airport=None, origin_state=None, dest_state=None):
     """
     Returns edge list (Origin to Dest counts) and node attributes (Centrality metrics)
     using NetworkX. If airport is given, only routes originating from that airport are included.
+    If origin_state / dest_state are given, filters to routes between those states.
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airport=airport, airline=airline, season=season)
+        where_clause, params = _build_where_clause(
+            airport=airport, airline=airline, season=season,
+            origin_state=origin_state, dest_state=dest_state
+        )
         
         # 1. Edge list: flights between Origin and Dest
         query_edges = f"""
@@ -230,8 +258,6 @@ def get_network_data(airline=None, season=None, airport=None):
         
         # Centrality calculations
         degree = nx.degree_centrality(G)
-        # Using weight for betweenness. Note: in networkx, higher weight = higher distance. 
-        # But here weight is flight count. So we might need to invert it or just calculate unweighted.
         # Unweighted betweenness is often better for aviation networks where any connection is a hop.
         betweenness = nx.betweenness_centrality(G, weight=None)
         
