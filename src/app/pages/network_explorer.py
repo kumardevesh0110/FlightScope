@@ -131,7 +131,11 @@ def get_layout():
             # ── Map ───────────────────────────────────────────────
             dbc.Card(
                 dbc.CardBody(
-                    dcc.Graph(id="network-map-graph", style={"height": "72vh"}),
+                    dcc.Graph(
+                        id="network-map-graph", 
+                        style={"height": "72vh"}, 
+                        config={"responsive": True, "displayModeBar": True, "scrollZoom": True}
+                    ),
                     style={"padding": "6px"},
                 ),
                 style={"background": CARD_BG, "border": "1px solid #1e293b", "borderRadius": "12px"},

@@ -253,9 +253,9 @@ def register_callbacks(app):
             df_rank = conn.execute(q_ranking, list(params_spec)).df()
             if not df_rank.empty:
                 ranking_fig = px.bar(df_rank, x="Airline", y="Flights", color="Flights", color_continuous_scale="Viridis", title="Top Airlines by Flight Volume")
-                ranking_fig.update_layout(template="plotly_dark", margin=dict(l=10, r=10, t=40, b=30), height=200)
+                ranking_fig.update_layout(template="plotly_dark", margin=dict(l=10, r=10, t=40, b=30))
             else:
-                ranking_fig = go.Figure().update_layout(template="plotly_dark", title="No Flight Data", height=200)
+                ranking_fig = go.Figure().update_layout(template="plotly_dark", title="No Flight Data")
 
             # 5. Box Plot (Limit to top 10 airlines)
             q_box = f"""
@@ -272,9 +272,9 @@ def register_callbacks(app):
             df_box = conn.execute(q_box, list(params_spec) * 2 if where_spec else []).df()
             if not df_box.empty:
                 box_fig = px.box(df_box, x="Airline", y="ArrDelay", color="Airline", title="Arrival Delays by Airline (Sampled Top 10)")
-                box_fig.update_layout(template="plotly_dark", height=250, margin=dict(l=10, r=10, t=40, b=30), showlegend=False)
+                box_fig.update_layout(template="plotly_dark", margin=dict(l=10, r=10, t=40, b=30), showlegend=False)
             else:
-                box_fig = go.Figure().update_layout(template="plotly_dark", title="No Flight Data", height=250)
+                box_fig = go.Figure().update_layout(template="plotly_dark", title="No Flight Data")
 
             # 6. Airport Map
             safe_path = AIRPORTS_CSV_PATH.replace('\\', '/')
