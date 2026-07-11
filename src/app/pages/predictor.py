@@ -12,10 +12,9 @@ FLIGHT_FILE = os.path.join(PROCESSED_DIR, "Flights_2022_sampled_1.8M.csv")
 
 print("Loading Predictor Data...")
 
-df = pd.read_csv(
-    FLIGHT_FILE,
-    usecols=["Operating_Airline ", "ArrDelay", "Origin", "Dest", "CRSDepTime", "Month", "DayOfWeek"],
-    low_memory=False
+df = pd.read_parquet(
+    FLIGHT_FILE.replace(".csv", ".parquet"),
+    columns=["Operating_Airline ", "ArrDelay", "Origin", "Dest", "CRSDepTime", "Month", "DayOfWeek"]
 )
 df["Airline"] = df["Operating_Airline "]
 

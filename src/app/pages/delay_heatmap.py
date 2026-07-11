@@ -334,11 +334,18 @@ def update_selected_airport(clickData, current_selected):
         Input("hourly-weekly-heatmap", "clickData"),
         Input("monthly-calendar-heatmap", "clickData"),
         Input("hour-slider", "value"),
+        Input("global-route-store", "data"),
     ]
 )
-def update_dashboard(metric, airline, season, selected_airport, hw_click, mc_click, hour_slider):
+def update_dashboard(metric, airline, season, selected_airport, hw_click, mc_click, hour_slider, route_data):
     ctx = dash.callback_context
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+
+    # Unpack global cross-page route filters
+    o_state = route_data.get("origin_state") if route_data else None
+    d_state = route_data.get("dest_state") if route_data else None
+    o_airport = route_data.get("origin_airport") if route_data else None
+    d_airport = route_data.get("dest_airport") if route_data else None
 
     # Enforce mutual exclusion for temporal clicks by only keeping the most recently triggered one
     if triggered_id == "hourly-weekly-heatmap":

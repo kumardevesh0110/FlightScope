@@ -27,9 +27,9 @@ AIRPORT_FILE = os.path.join(PROCESSED_DIR, "airports.csv")
 print("Loading Airline Dashboard Data...")
 
 
-df = pd.read_csv(
-    FLIGHT_FILE,
-    usecols=[
+df = pd.read_parquet(
+    FLIGHT_FILE.replace(".csv", ".parquet"),
+    columns=[
         "Month",
         "Operating_Airline ",
         "Marketing_Airline_Network",
@@ -43,8 +43,7 @@ df = pd.read_csv(
         "LateAircraftDelay",
         "Origin",
         "Dest"
-    ],
-    low_memory=False
+    ]
 )
 
 airports = pd.read_csv(

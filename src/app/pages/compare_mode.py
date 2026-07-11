@@ -14,10 +14,9 @@ FLIGHT_FILE = os.path.join(PROCESSED_DIR, "Flights_2022_sampled_1.8M.csv")
 
 print("Loading Compare Mode Data...")
 
-df = pd.read_csv(
-    FLIGHT_FILE,
-    usecols=["Operating_Airline ", "ArrDelay", "Cancelled", "Flights", "Origin", "Dest"],
-    low_memory=False
+df = pd.read_parquet(
+    FLIGHT_FILE.replace(".csv", ".parquet"),
+    columns=["Operating_Airline ", "ArrDelay", "Cancelled", "Flights", "Origin", "Dest"]
 )
 df["Airline"] = df["Operating_Airline "]
 

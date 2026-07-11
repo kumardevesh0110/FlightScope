@@ -25,15 +25,47 @@ def get_airlines():
     finally:
         conn.close()
 
-def _build_where_clause(airport=None, airline=None, season=None, month=None, date=None, day_of_week=None, dep_hour=None, day_of_month=None):
+def get_states():
+    """Returns a sorted list of distinct (state_code, state_name) tuples for state filter dropdowns."""
+    conn = get_db_connection()
+    try:
+        query = """
+            SELECT DISTINCT OriginState AS code, OriginStateName AS name
+            FROM flights
+            WHERE OriginState IS NOT NULL AND OriginStateName IS NOT NULL
+            ORDER BY OriginStateName
+        """
+        df = conn.execute(query).df()
+        return list(zip(df['code'].tolist(), df['name'].tolist()))
+    finally:
+        conn.close()
+
+def _build_where_clause(airport=None, airline=None, season=None, month=None, date=None, day_of_week=None, dep_hour=None, day_of_month=None,
+                        origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """Helper to construct WHERE clause filters dynamically using positional parameters."""
     conditions = []
     params = []
-    
+
     if airport:
         conditions.append("Origin = ?")
         params.append(airport)
-        
+
+    if origin_airport:
+        conditions.append("Origin = ?")
+        params.append(origin_airport)
+
+    if dest_airport:
+        conditions.append("Dest = ?")
+        params.append(dest_airport)
+
+    if origin_state:
+        conditions.append("OriginState = ?")
+        params.append(origin_state)
+
+    if dest_state:
+        conditions.append("DestState = ?")
+        params.append(dest_state)
+
     if airline:
         conditions.append("Marketing_Airline_Network = ?")
         params.append(airline)
@@ -241,14 +273,20 @@ def get_airport_list():
     finally:
         conn.close()
 
-def get_network_data(airline=None, season=None, airport=None):
+def get_network_data(airline=None, season=None, airport=None,
+                     origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """
     Returns edge list (Origin to Dest counts) and node attributes (Centrality metrics)
     using NetworkX. If airport is given, only routes originating from that airport are included.
+    If origin_state / dest_state are given, filters to routes between those states.
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airport=airport, airline=airline, season=season)
+        where_clause, params = _build_where_clause(
+            airport=airport, airline=airline, season=season,
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
+        )
         
         # 1. Edge list: flights between Origin and Dest
         query_edges = f"""
@@ -459,14 +497,19 @@ def get_pca_sample(airline=None, season=None, month=None, sample_size=5000):
     finally:
         conn.close()
 
-def get_delay_causes(airline=None, season=None, month=None, date=None):
+def get_delay_causes(airline=None, season=None, month=None, date=None,
+                     origin_state=None, dest_state=None, origin_airport=None, dest_airport=None):
     """
     Returns the total minutes for each of the 5 main delay causes,
     grouped by Delay Severity (Minor < 45m, Major >= 45m).
     """
     conn = get_db_connection()
     try:
-        where_clause, params = _build_where_clause(airline=airline, season=season, month=month, date=date)
+        where_clause, params = _build_where_clause(
+            airline=airline, season=season, month=month, date=date,
+            origin_state=origin_state, dest_state=dest_state,
+            origin_airport=origin_airport, dest_airport=dest_airport
+        )
         
         query = f"""
             SELECT 
