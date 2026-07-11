@@ -61,7 +61,7 @@ body {
 }
 
 /* Single Value Alignment Fix */
-.dark-dropdown .Select--single > .Select-control .Select-value {
+.dark-dropdown .Select--single>.Select-control .Select-value {
     line-height: 36px !important;
     padding-left: 10px !important;
 }
@@ -89,4 +89,48 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #334155;
+}
+
+/* Dash Slider (rc-slider) Dark Mode Overrides */
+.rc-slider-mark-text {
+    color: #94a3b8 !important;
+}
+
+.rc-slider-mark-text-active {
+    color: #f8fafc !important;
+    font-weight: 600 !important;
+}
+
+/* Change the filled bar color (currently purple) to blue */
+.rc-slider-track {
+    background-color: #3b82f6 !important;
+}
+
+/* Change the circle knob border color to blue */
+.rc-slider-handle {
+    border-color: #3b82f6 !important;
+    background-color: #ffffff !important;
+}
+
+/* Optional: Change the knob color when you click/hover it */
+.rc-slider-handle:hover,
+.rc-slider-handle:active,
+.rc-slider-handle:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Force ALL tooltips and tooltip text to be white background with BLACK text */
+.rc-slider-tooltip,
+.rc-slider-tooltip *,
+.rc-slider-tooltip-inner,
+.rc-slider-tooltip-inner * {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-color: #3b82f6 !important;
+}
+
+/* Change the little triangle arrow pointing to the tooltip */
+.rc-slider-tooltip-arrow {
+    border-top-color: #3b82f6 !important;
 }

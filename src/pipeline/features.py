@@ -127,7 +127,7 @@ def build_features(df):
 
 def run_features_generation(input_pq=None):
     if input_pq is None:
-        input_pq = os.path.join(PROCESSED_DIR, "Flights_2022_sampled_1.8M.parquet")
+        input_pq = os.path.join(PROCESSED_DIR, "Flights_2022_full_7M.parquet")
         
     output_pq = os.path.join(PROCESSED_DIR, "processed_flights.parquet")
     print(f"Loading from {input_pq}...")

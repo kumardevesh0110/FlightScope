@@ -42,10 +42,7 @@ df = pd.read_csv(
         "SecurityDelay",
         "LateAircraftDelay",
         "Origin",
-        "Dest",
-        "OriginState",
-        "DestState",
-        "AirTime"
+        "Dest"
     ],
     low_memory=False
 )
@@ -106,7 +103,6 @@ ranking_data = (
 
 
 
-
 ranking_fig = px.bar(
 
     ranking_data.head(15),
@@ -125,26 +121,178 @@ ranking_fig = px.bar(
 
 
 ranking_fig.update_layout(
-    template="plotly_dark",
-    margin=dict(l=20, r=20, t=30, b=20),
-    height = 200
+    template="plotly_dark"
 )
 
 
 
-# Delay cause chart and scatter removed for layout restructure
+# Delay cause chart
+
+cause_df = pd.DataFrame(
+
+    {
+
+    "Cause":[
+        "Carrier",
+        "Weather",
+        "NAS",
+        "Security",
+        "Late Aircraft"
+    ],
+
+    "Minutes":[
+
+        df["CarrierDelay"].sum(),
+
+        df["WeatherDelay"].sum(),
+
+        df["NASDelay"].sum(),
+
+        df["SecurityDelay"].sum(),
+
+        df["LateAircraftDelay"].sum()
+
+    ]
+
+    }
+
+)
+
+
+
+cause_fig = px.pie(
+
+    cause_df,
+
+    names="Cause",
+
+    values="Minutes",
+
+    hole=0.5,
+
+    color_discrete_sequence=
+    px.colors.qualitative.Set3,
+
+    title="Delay Causes"
+
+)
+
+
+cause_fig.update_layout(
+    template="plotly_dark"
+)
+
+
+cause_fig = px.pie(
+
+    cause_df,
+
+    names="Cause",
+
+    values="Minutes",
+
+    hole=0.5,
+
+    color_discrete_sequence=
+    px.colors.qualitative.Set3,
+
+    title="Delay Causes"
+
+)
+
+
+cause_fig.update_layout(
+    template="plotly_dark"
+)
+
+
+
+# Scatter
+
+scatter_data = (
+    df.groupby("Airline")
+    .agg(
+        Flights=("Flights", "count"),
+        AverageDelay=("ArrDelay", "mean")
+    )
+    .reset_index()
+)
+
+scatter_data = scatter_data.dropna()
+
+
+
+
+
+
+scatter_fig = px.scatter(
+
+    scatter_data,
+
+    x="Flights",
+
+    y="AverageDelay",
+
+    size="Flights",
+
+    color="Airline",
+
+    title="Flight Volume vs Average Delay"
+
+)
+
+
+scatter_fig.update_layout(
+    template="plotly_dark",
+    height=450
+)
 
 
 
 
 # =====================================================
-# GLOBAL MAX FOR RADAR
+# MONTHLY TREND
 # =====================================================
 
-grouped = df.groupby("Airline")
-MAX_FLIGHTS = grouped.size().max()
-MAX_DELAY = grouped["ArrDelay"].mean().max()
-MAX_CANCEL = grouped["Cancelled"].mean().max() * 100
+monthly_data = (
+
+    df.groupby("Month")
+    .agg(
+
+        Flights=("Flights","sum"),
+
+        Delay=("ArrDelay","mean")
+
+    )
+
+    .reset_index()
+
+)
+
+
+
+monthly_fig = px.line(
+
+    monthly_data,
+
+    x="Month",
+
+    y="Flights",
+
+    markers=True,
+
+    color_discrete_sequence=["cyan"],
+
+    title="Monthly Flight Volume Trend"
+
+)
+
+
+monthly_fig.update_layout(
+    template="plotly_dark"
+)
+
+
 
 # =====================================================
 # DELAY HEATMAP
@@ -183,27 +331,28 @@ heatmap_data = pd.DataFrame(
 )
 
 
-box_plot_data = df
 
+heatmap_fig = px.imshow(
 
-# Box Plot showing distribution of Arrival Delays per Airline
-box_fig = px.box(
-    box_plot_data,
-    x="Airline",
-    y="ArrDelay",
-    color="Airline",
-    title="Distribution of Arrival Delays by Airline"
+    [heatmap_data["Delay Minutes"].values],
+
+    labels={
+        "x":"Delay Cause",
+        "y":""
+    },
+
+    x=heatmap_data["Cause"],
+
+    color_continuous_scale="Plasma",
+
+    title="Delay Cause Heatmap"
+
 )
 
-box_fig.update_layout(
-    template="plotly_dark",
-    height=250,
-    margin=dict(l=20, r=20, t=30, b=20),
-    showlegend=False # Set to False to keep the UI clean
+
+heatmap_fig.update_layout(
+    template="plotly_dark"
 )
-
-
-
 
 
 
@@ -287,7 +436,7 @@ map_fig.update_layout(
 
 
 # =====================================================
-# LAYOUT 
+# LAYOUT (CORRECTED)
 # =====================================================
 
 layout = html.Div(
@@ -310,28 +459,34 @@ layout = html.Div(
         ),
 
 
- # ================= DROPDOWN =================
+        # ================= DROPDOWN =================
+
         dbc.Row(
             [
                 dbc.Col(
                     dcc.Dropdown(
                         id="airline_dropdown",
-                        options=[{"label": "All Airlines", "value": "ALL"}] + [
-                            {"label": x, "value": x} for x in airlines
+
+                        options=[
+                            {
+                                "label": x,
+                                "value": x
+                            }
+                            for x in airlines
                         ],
-                        value="ALL",
-                        clearable=False,
-                        placeholder="Select an Airline...",
-                        style={
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        }
+
+                        value=airlines[0],
+                        clearable=False
                     ),
+
                     width=4
                 )
             ],
+
             className="mb-4"
         ),
+
+
 
         # ================= KPI CARDS =================
 
@@ -341,12 +496,15 @@ layout = html.Div(
                 dbc.Col(
                     dbc.Card(
                         [
-                            html.H5("Flights", style={"fontSize": "14px", "fontWeight": "600", "color": "#0ea5e9"}),
-                            html.H2(id="kpi_flights", style={"color": "#0ea5e9", "fontWeight": "bold"})
+                            html.H5("Flights"),
+                            html.H2(id="kpi_flights")
                         ],
-                        style={"backgroundColor": "#1a1d2b", "border": "1px solid #0ea5e9", "borderRadius": "8px"},
+
+                        color="primary",
+                        inverse=True,
                         body=True
                     ),
+
                     width=3
                 ),
 
@@ -355,12 +513,15 @@ layout = html.Div(
                 dbc.Col(
                     dbc.Card(
                         [
-                            html.H5("Average Delay", style={"fontSize": "14px", "fontWeight": "600", "color": "#ef4444"}),
-                            html.H2(id="kpi_delay", style={"color": "#ef4444", "fontWeight": "bold"})
+                            html.H5("Average Delay"),
+                            html.H2(id="kpi_delay")
                         ],
-                        style={"backgroundColor": "#1a1d2b", "border": "1px solid #ef4444", "borderRadius": "8px"},
+
+                        color="danger",
+                        inverse=True,
                         body=True
                     ),
+
                     width=3
                 ),
 
@@ -369,12 +530,15 @@ layout = html.Div(
                 dbc.Col(
                     dbc.Card(
                         [
-                            html.H5("On Time", style={"fontSize": "14px", "fontWeight": "600", "color": "#22c55e"}),
-                            html.H2(id="kpi_ontime", style={"color": "#22c55e", "fontWeight": "bold"})
+                            html.H5("On Time"),
+                            html.H2(id="kpi_ontime")
                         ],
-                        style={"backgroundColor": "#1a1d2b", "border": "1px solid #22c55e", "borderRadius": "8px"},
+
+                        color="success",
+                        inverse=True,
                         body=True
                     ),
+
                     width=3
                 ),
 
@@ -383,14 +547,17 @@ layout = html.Div(
                 dbc.Col(
                     dbc.Card(
                         [
-                            html.H5("Cancelled", style={"fontSize": "14px", "fontWeight": "600", "color": "#f97316"}),
-                            html.H2(id="kpi_cancel", style={"color": "#f97316", "fontWeight": "bold"})
+                            html.H5("Cancelled"),
+                            html.H2(id="kpi_cancel")
                         ],
-                        style={"backgroundColor": "#1a1d2b", "border": "1px solid #f97316", "borderRadius": "8px"},
+
+                        color="warning",
+                        inverse=True,
                         body=True
                     ),
+
                     width=3
-                ),
+                )
 
             ],
 
@@ -401,7 +568,7 @@ layout = html.Div(
 
 
 
-        # ================= BAR + MONTHLY + HEATMAP =================
+        # ================= BAR + PIE =================
 
 
         dbc.Row(
@@ -420,47 +587,16 @@ layout = html.Div(
                                     "responsive": True,
                                     "displayModeBar": False
                                 },
-                                
 
                                 style={
-                                    "height":"300px"
+                                    "height":"380px"
                                 }
                             )
 
                         )
                     ),
 
-                    width=4
-
-                ),
-
-                dbc.Col(
-
-                    dbc.Card(
-
-                        dbc.CardBody(
-
-                            dcc.Graph(
-
-                                id="radar_fig",
-
-                                config={
-                                    "responsive":True,
-                                    "displayModeBar":False
-                                },
-
-                                style={
-                                    "height":"300px"
-                                }
-
-                            )
-
-
-                        )
-
-                    ),
-
-                    width=4
+                    width=6
 
                 ),
 
@@ -469,29 +605,25 @@ layout = html.Div(
                 dbc.Col(
 
                     dbc.Card(
-
                         dbc.CardBody(
 
                             dcc.Graph(
-
-                                figure=box_fig,
+                                figure=cause_fig,
 
                                 config={
-                                    "responsive":True,
-                                    "displayModeBar":False
+                                    "responsive": True,
+                                    "displayModeBar": False
                                 },
 
                                 style={
-                                    "height":"300px"
+                                    "height":"380px"
                                 }
-
                             )
 
                         )
-
                     ),
 
-                    width=4
+                    width=6
 
                 )
 
@@ -504,7 +636,128 @@ layout = html.Div(
 
 
 
-        # ================= MAP + PIE =================
+        # ================= SCATTER =================
+
+
+        dbc.Row(
+
+            [
+
+                dbc.Col(
+
+                    dbc.Card(
+
+                        dbc.CardBody(
+
+                            dcc.Graph(
+
+                                figure=scatter_fig,
+
+                                config={
+                                    "responsive":True,
+                                    "displayModeBar":False
+                                },
+
+                                style={
+                                    "height":"420px"
+                                }
+
+                            )
+
+                        )
+
+                    ),
+
+                    width=12
+
+                )
+
+            ],
+
+            className="mb-4"
+
+        ),
+
+
+
+
+        # ================= MONTHLY + HEATMAP =================
+
+
+        dbc.Row(
+
+            [
+
+                dbc.Col(
+
+                    dbc.Card(
+
+                        dbc.CardBody(
+
+                            dcc.Graph(
+
+                                figure=monthly_fig,
+
+                                config={
+                                    "responsive":True,
+                                    "displayModeBar":False
+                                },
+
+                                style={
+                                    "height":"380px"
+                                }
+
+                            )
+
+                        )
+
+                    ),
+
+                    width=6
+
+                ),
+
+
+
+                dbc.Col(
+
+                    dbc.Card(
+
+                        dbc.CardBody(
+
+                            dcc.Graph(
+
+                                figure=heatmap_fig,
+
+                                config={
+                                    "responsive":True,
+                                    "displayModeBar":False
+                                },
+
+                                style={
+                                    "height":"380px"
+                                }
+
+                            )
+
+                        )
+
+                    ),
+
+                    width=6
+
+                )
+
+            ],
+
+            className="mb-4"
+
+        ),
+
+
+
+
+        # ================= MAP =================
 
 
         dbc.Row(
@@ -527,7 +780,7 @@ layout = html.Div(
                                 },
 
                                 style={
-                                    "height":"300px"
+                                    "height":"450px"
                                 }
 
                             )
@@ -536,48 +789,13 @@ layout = html.Div(
 
                     ),
 
-                    width=8
+                    width=12
 
-                ),
+                )
 
-                dbc.Col(
+            ]
 
-                    dbc.Card(
-                        dbc.CardBody(
-
-                            dcc.Graph(
-                                id="duration_fig",
-
-                                config={
-                                    "responsive": True,
-                                    "displayModeBar": False
-                                },
-
-                                style={
-                                    "height":"300px"
-                                }
-                            )
-
-                        )
-                    ),
-
-                    width=4
-
-                ),
-
-            ],
-
-            className="mb-4"
-
-        ),
-
-
-
-
-
-
-
-        # ================= SCATTER REMOVED =================
+        )
 
     ]
 
@@ -616,121 +834,63 @@ def register_callbacks(app):
         Output(
             "kpi_cancel",
             "children"
-        ),
-
-        Output(
-            "radar_fig",
-            "figure"
-        ),
-
-        Output(
-            "duration_fig",
-            "figure"
         )
 
         ],
 
-        [
-            Input("airline_dropdown", "value"),
-            Input("global-route-store", "data")
-        ]
+
+        Input(
+            "airline_dropdown",
+            "value"
+        )
 
     )
 
 
-    def update_cards(selected, route_data):
-        
-        # Apply Global Filters
-        temp = df.copy()
-        if route_data:
-            o_state = route_data.get("origin_state")
-            d_state = route_data.get("dest_state")
-            o_airport = route_data.get("origin_airport")
-            d_airport = route_data.get("dest_airport")
-            
-            if o_state: temp = temp[temp["OriginState"] == o_state]
-            if d_state: temp = temp[temp["DestState"] == d_state]
-            if o_airport: temp = temp[temp["Origin"] == o_airport]
-            if d_airport: temp = temp[temp["Dest"] == d_airport]
+    def update_cards(selected):
 
-        # Compute dynamic maxes for the current route
-        if len(temp) > 0:
-            route_grouped = temp.groupby("Airline")
-            dyn_max_flights = route_grouped.size().max()
-            dyn_max_delay = route_grouped["ArrDelay"].mean().max()
-            dyn_max_cancel = route_grouped["Cancelled"].mean().max() * 100
-        else:
-            dyn_max_flights = MAX_FLIGHTS
-            dyn_max_delay = MAX_DELAY
-            dyn_max_cancel = MAX_CANCEL
 
-        if selected != "ALL":
-            temp = temp[temp["Airline"] == selected]
+        temp=df[
+            df["Airline"]==selected
+        ]
 
-        flights = len(temp)
 
-        if flights == 0:
-            delay = 0
-            delayed_pct = 0
-            cancel = 0
-        else:
-            delay = round(temp["ArrDelay"].mean(), 2)
-            delayed_pct = round(temp["Delayed"].mean() * 100, 2)
-            cancel = round(temp["Cancelled"].mean() * 100, 2)
-            
-        ontime_pct = round(100 - delayed_pct, 2)
+        flights=len(temp)
 
-        # Compute Radar Scores
-        if selected == "ALL":
-            f_score = 100
-        else:
-            f_score = (flights / dyn_max_flights) * 100 if dyn_max_flights > 0 else 0
-            
-        d_score = max(0, 100 - (delay / dyn_max_delay * 100)) if dyn_max_delay > 0 else 100
-        o_score = ontime_pct
-        c_score = max(0, 100 - (cancel / dyn_max_cancel * 100)) if dyn_max_cancel > 0 else 100
 
-        radar_fig = go.Figure()
-        radar_fig.add_trace(go.Scatterpolar(
-            r=[f_score, d_score, o_score, c_score],
-            theta=['Volume', 'Timeliness', 'On-Time', 'Completion'],
-            fill='toself',
-            name=selected,
-            line_color="cyan"
-        ))
-        radar_fig.update_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, range=[0, 100], gridcolor="#334155"),
-                angularaxis=dict(gridcolor="#334155")
-            ),
-            showlegend=False,
-            template="plotly_dark",
-            margin=dict(l=30, r=30, t=40, b=30),
-            title="Performance Radar",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)"
+        delay=round(
+
+            temp["ArrDelay"]
+            .mean(),
+
+            2
+
         )
 
-        # Duration Histogram
-        if not temp.empty and not temp["AirTime"].isna().all():
-            duration_fig = px.histogram(
-                temp, 
-                x="AirTime", 
-                nbins=30, 
-                title=f"Flight Duration Distribution",
-                color_discrete_sequence=["#eab308"]
-            )
-            duration_fig.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=20, r=20, t=40, b=20),
-                xaxis_title="Air Time (Mins)",
-                yaxis_title="Count"
-            )
-        else:
-            duration_fig = go.Figure()
-            duration_fig.update_layout(template="plotly_dark", title="No Flight Data")
+
+        ontime=round(
+
+            (
+
+            temp["Delayed"]
+            .mean()
+
+            ),
+
+            2
+
+        )
+
+
+        cancel=round(
+
+            temp["Cancelled"]
+            .mean()*100,
+
+            2
+
+        )
+
 
         return (
 
@@ -738,12 +898,8 @@ def register_callbacks(app):
 
             f"{delay} min",
 
-            f"{ontime_pct}%",
+            f"{100-ontime}%",
 
-            f"{cancel}%",
-            
-            radar_fig,
-            
-            duration_fig
+            f"{cancel}%"
 
         )
