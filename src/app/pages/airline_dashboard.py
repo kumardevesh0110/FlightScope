@@ -414,7 +414,7 @@ layout = html.Div(
                         dbc.CardBody(
 
                             dcc.Graph(
-                                figure=ranking_fig,
+                                id="ranking_fig",
 
                                 config={
                                     "responsive": True,
@@ -474,7 +474,7 @@ layout = html.Div(
 
                             dcc.Graph(
 
-                                figure=box_fig,
+                                id="box_fig",
 
                                 config={
                                     "responsive":True,
@@ -519,7 +519,7 @@ layout = html.Div(
 
                             dcc.Graph(
 
-                                figure=map_fig,
+                                id="map_fig",
 
                                 config={
                                     "responsive":True,
@@ -625,6 +625,21 @@ def register_callbacks(app):
 
         Output(
             "duration_fig",
+            "figure"
+        ),
+        
+        Output(
+            "ranking_fig",
+            "figure"
+        ),
+        
+        Output(
+            "box_fig",
+            "figure"
+        ),
+        
+        Output(
+            "map_fig",
             "figure"
         )
 
@@ -732,6 +747,43 @@ def register_callbacks(app):
             duration_fig = go.Figure()
             duration_fig.update_layout(template="plotly_dark", title="No Flight Data")
 
+        # Top Airlines Bar Chart
+        if not temp.empty:
+            ranking_data = temp.groupby("Airline").size().reset_index(name="Flights").sort_values("Flights", ascending=False)
+            ranking_fig = px.bar(
+                ranking_data.head(15), x="Airline", y="Flights", color="Flights", color_continuous_scale="Viridis", title="Top Airlines by Flight Volume"
+            )
+            ranking_fig.update_layout(template="plotly_dark", margin=dict(l=20, r=20, t=30, b=20), height=200)
+        else:
+            ranking_fig = go.Figure()
+            ranking_fig.update_layout(template="plotly_dark", title="No Flight Data", height=200)
+
+        # Box Plot
+        if not temp.empty:
+            box_fig = px.box(temp, x="Airline", y="ArrDelay", color="Airline", title="Distribution of Arrival Delays by Airline")
+            box_fig.update_layout(template="plotly_dark", height=250, margin=dict(l=20, r=20, t=30, b=20), showlegend=False)
+        else:
+            box_fig = go.Figure()
+            box_fig.update_layout(template="plotly_dark", title="No Flight Data", height=250)
+
+        # Airport Map
+        if not temp.empty:
+            route_airports = temp["Origin"].value_counts().head(30).reset_index()
+            route_airports.columns=["faa", "Flights"]
+            route_map_data = route_airports.merge(airports, on="faa", how="left")
+            map_fig = px.scatter_mapbox(
+                route_map_data, lat="lat", lon="lon", size="Flights", hover_name="name", color="Flights",
+                color_continuous_scale="Turbo", zoom=3, title="Top Airports by Flight Activity"
+            )
+            map_fig.update_layout(
+                mapbox_style="carto-darkmatter", 
+                template="plotly_dark",
+                margin=dict(l=10, r=10, t=40, b=10)
+            )
+        else:
+            map_fig = go.Figure()
+            map_fig.update_layout(template="plotly_dark", title="No Flight Data", margin=dict(l=10, r=10, t=40, b=10))
+
         return (
 
             f"{flights:,}",
@@ -744,6 +796,12 @@ def register_callbacks(app):
             
             radar_fig,
             
-            duration_fig
+            duration_fig,
+            
+            ranking_fig,
+            
+            box_fig,
+            
+            map_fig
 
         )
