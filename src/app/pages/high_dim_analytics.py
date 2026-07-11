@@ -5,8 +5,8 @@ import duckdb
 import pandas as pd
 from src.pipeline.config import DB_PATH
 
-def get_umap_data(month=None):
-    """Fetches a sample of flights, filtered by month if requested."""
+def get_umap_data(month=None, origin_state=None, dest_state=None):
+    """Fetches a sample of flights, filtered by month and state if requested."""
     conn = duckdb.connect(DB_PATH, read_only=True)
     
     base_query = """
@@ -19,6 +19,12 @@ def get_umap_data(month=None):
     # The Month Slider filter
     if month:
         base_query += f" AND Month = {month}"
+        
+    # The new Global State filters
+    if origin_state:
+        base_query += f" AND OriginState = '{origin_state}'"
+    if dest_state:
+        base_query += f" AND DestState = '{dest_state}'"
         
     # Updated to 5000 to perfectly match Anushka's instructions!
     base_query += " USING SAMPLE 5000" 
@@ -33,47 +39,76 @@ def create_layout():
         html.H3("High-Dimensional Analytics", className="mt-4 mb-3 text-primary"),
         html.P("Exploring complex delay topologies using UMAP and Parallel Coordinates.", className="text-muted"),
         
-        # Month Slider for Interactivity
-        dbc.Card([
-            dbc.CardBody([
-                html.H6("Filter by Month:", className="mb-3"),
-                dcc.Slider(
-                    id='month-slider',
-                    min=1, max=12, step=1,
-                    marks={i: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i-1] for i in range(1, 13)},
-                    value=1, # Default to January
-                    included=False
-                )
-            ])
-        ], className="shadow-sm border-0 mb-4"),
+        # Everything goes inside a single Row to sit side-by-side
+        dbc.Row([
+            
+            # LEFT COLUMN: Vertical Slider (Width 2 out of 12)
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H6("Month", className="mb-4 text-center", style={"color": "#ffffff"}),
+                        html.Div(
+                            dcc.Slider(
+                                id='month-slider',
+                                min=1, max=12, step=1,
+                                # Injecting the CSS colors directly into the Python marks dictionary!
+                                marks={
+                                    i: {
+                                        'label': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i-1],
+                                        'style': {'color': '#94a3b8', 'fontSize': '14px', 'paddingLeft': '15px'}
+                                    } for i in range(1, 13)
+                                },
+                                value=1, 
+                                included=False,
+                                vertical=True
+                            ),
+                            style={"height": "50vh", "paddingLeft": "40%"} # Centers it and gives it height
+                        )
+                    ])
+                ], className="shadow-sm border-0 h-100", style={"backgroundColor": "#151722"})
+            ], width=2),
+            
+            # MIDDLE COLUMN: UMAP Graph (Width 5 out of 12)
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H5("Delay Clusters (3D UMAP)", className="mb-3", style={"color": "#ffffff"}),
+                        dcc.Graph(id="umap-scatter-plot", style={"height": "55vh"})
+                    ])
+                ], className="shadow-sm border-0 h-100", style={"backgroundColor": "#151722"})
+            ], width=5),
+            
+            # RIGHT COLUMN: Parallel Coordinates Graph (Width 5 out of 12)
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H5("Multivariate Delay Flow", className="mb-3", style={"color": "#ffffff"}),
+                        dcc.Graph(id="parallel-coords-plot", style={"height": "55vh"})
+                    ])
+                ], className="shadow-sm border-0 h-100", style={"backgroundColor": "#151722"})
+            ], width=5)
+            
+        ], className="mb-4 align-items-stretch") # align-items-stretch makes all 3 cards equal height
         
-        # The UMAP Scatter Plot
-        dbc.Card([
-            dbc.CardBody([
-                dcc.Graph(id="umap-scatter-plot", style={"height": "50vh"})
-            ])
-        ], className="shadow-sm border-0 mb-4"),
-        
-        # The Parallel Coordinates Plot 
-        dbc.Card([
-            dbc.CardBody([
-                html.H5("Multivariate Delay Flow (Parallel Coordinates)", className="mb-3"),
-                dcc.Graph(id="parallel-coords-plot", style={"height": "40vh"})
-            ])
-        ], className="shadow-sm border-0 mb-4")
-        
-    ], fluid=True, style={"backgroundColor": "#0c0d12", "minHeight": "100vh", "padding": "20px"})
+    ], fluid=True, id="aditi-view-container", style={"backgroundColor": "#0c0d12", "minHeight": "100vh", "padding": "20px"})
 
 layout = create_layout()
 
-# The Callback makes the graphs react to the slider dynamically
+# The Callback makes the graphs react to the slider and global dropdowns dynamically
 @callback(
     Output("umap-scatter-plot", "figure"),
     Output("parallel-coords-plot", "figure"),
-    Input("month-slider", "value")
+    Input("month-slider", "value"),
+    Input("global-route-store", "data") # Tapping into the global store from app.py
 )
-def update_graphs(selected_month):
-    df = get_umap_data(selected_month)
+def update_graphs(selected_month, route_data):
+    # Extract states from the global store, defaulting to empty strings if None
+    route_data = route_data or {}
+    origin_state = route_data.get("origin_state", "")
+    dest_state = route_data.get("dest_state", "")
+    
+    # Pass the new state filters into your data fetcher
+    df = get_umap_data(selected_month, origin_state, dest_state)
     
     # 1. Update UMAP Figure to 3D (High Contrast Dark Theme)
     umap_fig = px.scatter_3d(

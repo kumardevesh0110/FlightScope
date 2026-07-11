@@ -105,8 +105,8 @@ def build_features(df):
     df['UMAP_2'] = np.nan
     df['UMAP_3'] = np.nan
     
-    # Grab a random subset of 300,000 flights to calculate
-    sample_idx = df.sample(n=500000, random_state=42).index
+    # Grab a random subset of 100,000 flights to calculate
+    sample_idx = df.sample(n=100000, random_state=42).index
     
     # Prepare only the subset for math
     X_umap = df.loc[sample_idx, umap_features].fillna(0).values
