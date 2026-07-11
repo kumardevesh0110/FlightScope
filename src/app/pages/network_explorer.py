@@ -48,10 +48,7 @@ def get_layout():
         {"label": f"{row.faa} – {row.name}", "value": row.faa} for row in airports_df.itertuples()
     ]
 
-    states = get_states()  # list of (code, name)
-    state_options = [{"label": "Any State", "value": ""}] + [
-        {"label": name, "value": code} for code, name in states
-    ]
+  state_options = [{"label": "Any State", "value": ""}]
 
     return html.Div(
         style={"padding": "12px 16px"},
