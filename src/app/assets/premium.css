@@ -97,3 +97,50 @@
     display: inline-block;
     font-size: 0.8rem;
 }
+
+
+
+
+
+.premium-page-container {
+    background-color: #080710 !important;
+    color: #ffffff !important;
+    font-family: sans-serif !important;
+    min-height: 100vh !important;
+    padding: 20px !important;
+}
+
+
+.premium-kpi-card {
+    background-color: #0f0e1c !important;
+    border: 1px solid #1e1b4b !important;
+    border-radius: 8px !important;
+    padding: 15px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+    box-shadow: none !important;
+}
+
+.premium-kpi-title {
+    font-size: 10px !important;
+    color: #a1a1aa !important;
+    margin: 0 !important;
+    font-weight: bold !important;
+    text-transform: uppercase;
+}
+
+.premium-kpi-value {
+    margin: 0 !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+}
+
+.premium-filter-section {
+    background-color: #0f0e1c !important;
+    border: 1px solid #1e1b4b !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
+    margin-bottom: 25px !important;
+}
