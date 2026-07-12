@@ -157,7 +157,7 @@ def update_selected_airport(clickData, current_selected):
             if isinstance(faa, list):
                 faa = faa[0]
             if faa:
-                return faa
+                return {'airport': faa}
         except Exception:
             pass
     return current_selected
@@ -192,6 +192,7 @@ def update_network(airline, season, top_n, selected_airport, route_data):
     origin_state = o_state
     dest_state = d_state
     
+    selected_airport = selected_airport.get('airport') if isinstance(selected_airport, dict) else selected_airport
     if selected_airport:
         o_airport = selected_airport
     # ── Build contextual status badge ─────────────────────────────
