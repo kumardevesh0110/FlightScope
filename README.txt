@@ -35,12 +35,11 @@ You will need to download the pre-processed data files to run the dashboard.
 2. Download the pre-processed files from our Google Drive:
    - Link: https://drive.google.com/drive/folders/1Gxms7jueCaMbZjSNk3rzNzUc66H2XH2j?usp=sharing
 
-3. You need to download the following 3 files:
+3. You need to download the following 2 files:
    - `flights.db` (The core database)
    - `processed_flights_with_umap.parquet` (For High-Dimensional Analytics)
-   - `airports.csv` (For airport mapping coordinates)
 
-4. Place all 3 files directly into the `data/processed/` directory.
+4. Place all 2 files directly into the `data/processed/` directory.
 
 
 =========================================
