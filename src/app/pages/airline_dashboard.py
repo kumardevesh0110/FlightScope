@@ -198,7 +198,7 @@ def register_callbacks(app):
             # Airline specific where clause
             if selected != "ALL":
                 where_spec, params_spec = _build_where_clause(
-                    airport=global_airport,
+                    airport=g_airport,
                     airline=selected, origin_state=o_state, dest_state=d_state, 
                     origin_airport=o_airport, dest_airport=d_airport
                 )
